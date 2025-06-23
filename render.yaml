@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: birthday-video-generator
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python main.py"
+    plan: free
