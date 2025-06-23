@@ -1,5 +1,8 @@
 from flask import Flask, request, jsonify
-from moviepy import ImageClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip
+from moviepy.video.io.ImageSequenceClip import ImageSequenceClip
+from moviepy.audio.io.AudioFileClip import AudioFileClip
+from moviepy.video.VideoClip import TextClip
+from moviepy.video.compositing.CompositeVideoClip import CompositeVideoClip
 import os
 import tempfile
 import uuid
