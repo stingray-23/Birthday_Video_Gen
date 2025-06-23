@@ -1,18 +1,18 @@
 from flask import Flask, request, jsonify
-from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
+from moviepy import ImageClip, TextClip, CompositeVideoClip, concatenate_videoclips, AudioFileClip
 import os
 import tempfile
 import uuid
+import random
 import requests
 
 app = Flask(__name__)
 
-# Ensure necessary folders exist
 os.makedirs("videos", exist_ok=True)
 os.makedirs("mp3s", exist_ok=True)
 
 @app.route("/")
-def index():
+def home():
     return "🎉 Birthday Video Generator is Live!"
 
 @app.route("/webhook", methods=["POST"])
@@ -20,17 +20,26 @@ def make_video():
     try:
         data = request.json
 
+        # Extract form data
         nickname = data.get("nickname", "Friend")
-        song = data.get("song")
+        song = data.get("songChoice")
         photo_urls = data.get("photoURLs", "").split(",")
+        meeting_place = data.get("meetingPlace", "")
+        movie_title = data.get("movieTitle", "")
+        color = data.get("colorChoice", "white")
+        emoji = data.get("emoji", "🎉")
         bond_word = data.get("bondWord", "Bestie")
 
-        if not song or not photo_urls:
+        if not song or not photo_urls or photo_urls == [""]:
             return jsonify({"error": "Missing song or photos"}), 400
 
-        # Create image clips
         clips = []
-        for url in photo_urls:
+
+        min_total_duration = 45  # seconds
+        num_images = len(photo_urls)
+        duration_per_image = max(4, min(8, min_total_duration // max(num_images, 1)))
+
+        for i, url in enumerate(photo_urls):
             response = requests.get(url)
             if response.status_code != 200:
                 return jsonify({"error": f"Failed to fetch image: {url}"}), 400
@@ -38,12 +47,49 @@ def make_video():
             temp_img = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
             temp_img.write(response.content)
             temp_img.close()
-            clip = ImageClip(temp_img.name).set_duration(4).resize(width=720)
-            clips.append(clip)
 
-        # Concatenate and add audio
+            img_clip = ImageClip(temp_img.name).set_duration(duration_per_image).resize(width=720)
+
+            txt_overlays = []
+
+            # First image → Intro message
+            if i == 0:
+                text = f"Happy Birthday {nickname} {emoji}"
+                txt = TextClip(text, fontsize=60, color=color, font="Arial-Bold")
+                txt = txt.set_position(("center", "bottom")).set_duration(duration_per_image)
+                txt_overlays.append(txt)
+
+            # Second image → Meeting place
+            if i == 1 and meeting_place:
+                txt = TextClip(f"Where we met: {meeting_place}", fontsize=40, color=color, font="Arial")
+                txt = txt.set_position(("center", "top")).set_duration(duration_per_image)
+                txt_overlays.append(txt)
+
+            # Last image → Movie title
+            if i == len(photo_urls) - 1 and movie_title:
+                txt = TextClip(movie_title, fontsize=50, color=color, font="Arial-Italic")
+                txt = txt.set_position(("center", "center")).set_duration(duration_per_image)
+                txt_overlays.append(txt)
+
+            # Emoji on every image
+            emoji_txt = TextClip(emoji, fontsize=40, color=color)
+            emoji_txt = emoji_txt.set_position(("right", "bottom")).set_duration(duration_per_image)
+            txt_overlays.append(emoji_txt)
+
+            comp = CompositeVideoClip([img_clip] + txt_overlays)
+            clips.append(comp.crossfadein(random.uniform(0.8, 1.2)))
+
+
+        # Final birthday message
+        final_text = f"You’ll always be my {bond_word} ❤️"
+        txt_clip = TextClip(final_text, fontsize=60, color=color, font="Arial-Bold")
+        txt_clip = txt_clip.set_position("center").set_duration(3)
+        final_clip = CompositeVideoClip([txt_clip.on_color(size=(720, 480), color=(0, 0, 0))])
+        clips.append(final_clip)
+
         final_video = concatenate_videoclips(clips, method="compose")
 
+        # Add music
         audio_path = f"mp3s/{song}.mp3"
         if not os.path.exists(audio_path):
             return jsonify({"error": f"Song '{song}.mp3' not found in mp3s folder."}), 404
@@ -51,21 +97,17 @@ def make_video():
         audio = AudioFileClip(audio_path).subclip(0, final_video.duration)
         final_video = final_video.set_audio(audio)
 
-        # Output file path with unique name
-        output_filename = f"videos/output_{uuid.uuid4().hex}.mp4"
-        final_video.write_videofile(output_filename, fps=24, audio_codec='aac')
+        # Export video
+        output_path = f"videos/output_{uuid.uuid4().hex}.mp4"
+        final_video.write_videofile(output_path, fps=24, audio_codec="aac")
 
         return jsonify({
             "status": "success",
-            "nickname": nickname,
-            "bondWord": bond_word,
-            "video_path": output_filename
+            "video_path": output_path
         })
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-import os
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
