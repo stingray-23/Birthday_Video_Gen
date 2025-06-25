@@ -22,6 +22,7 @@ def home():
 
 @app.route("/webhook", methods=["POST"])
 def make_video():
+    print("Request received:", request.json)
     try:
         data = request.json
 
