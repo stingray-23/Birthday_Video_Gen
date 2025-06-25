@@ -8,10 +8,14 @@ import tempfile
 import uuid
 import random
 import requests
+import smtplib
+from email.message import EmailMessage
 
-app = Flask(__name__)
 app = Flask(__name__, static_url_path='/videos', static_folder='videos')
 
+# Configure your email credentials (use environment variables in production)
+EMAIL_ADDRESS = "your_email@gmail.com"
+EMAIL_PASSWORD = "your_app_password"  # Use an App Password if using Gmail
 
 os.makedirs("videos", exist_ok=True)
 os.makedirs("mp3s", exist_ok=True)
@@ -35,7 +39,8 @@ def make_video():
         color = data.get("colorChoice", "white")
         emoji = data.get("emoji", "🎉")
         bond_word = data.get("bondWord", "Bestie")
-
+        recipient_email = data.get("email")
+        
         if not song or not photo_urls or photo_urls == [""]:
             return jsonify({"error": "Missing song or photos"}), 400
 
@@ -108,6 +113,9 @@ def make_video():
         video_url = f"https://birthday-video-gen.onrender.com/{output_path}"
         final_video.write_videofile(output_path, fps=24, audio_codec="aac")
 
+        if recipient_email:
+            send_email(recipient_email, nickname, video_url)
+
         return jsonify({
             "status": "success",
             "video_url": video_url
@@ -116,6 +124,26 @@ def make_video():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+def send_email(to_email, nickname, video_url):
+    msg = EmailMessage()
+    msg['Subject'] = "🎉 Your Personalized Birthday Video!"
+    msg['From'] = EMAIL_ADDRESS
+    msg['To'] = to_email
+
+    msg.set_content(f"""
+Hi {nickname}! 💖
+
+Your personalized birthday surprise video is ready!
+
+🎬 Watch it here: {video_url}
+
+We hope it brings a smile to your face. Enjoy your special day! 🎂🎁
+""")
+
+    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+        smtp.login(EMAIL_ADDRESS, EMAIL_PASSWORD)
+        smtp.send_message(msg)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
