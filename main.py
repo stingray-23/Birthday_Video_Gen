@@ -14,8 +14,7 @@ from email.message import EmailMessage
 app = Flask(__name__, static_url_path='/videos', static_folder='videos')
 
 # Configure your email credentials (use environment variables in production)
-EMAIL_ADDRESS = "your_email@gmail.com"
-EMAIL_PASSWORD = "your_app_password"  # Use an App Password if using Gmail
+EMAIL_ADDRESS = "shashankmkm1876@gmail.com"
 
 os.makedirs("videos", exist_ok=True)
 os.makedirs("mp3s", exist_ok=True)
