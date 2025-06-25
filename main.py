@@ -10,6 +10,8 @@ import random
 import requests
 
 app = Flask(__name__)
+app = Flask(__name__, static_url_path='/videos', static_folder='videos')
+
 
 os.makedirs("videos", exist_ok=True)
 os.makedirs("mp3s", exist_ok=True)
@@ -102,12 +104,14 @@ def make_video():
 
         # Export video
         output_path = f"videos/output_{uuid.uuid4().hex}.mp4"
+        video_url = f"https://birthday-video-gen.onrender.com/{output_path}"
         final_video.write_videofile(output_path, fps=24, audio_codec="aac")
 
         return jsonify({
             "status": "success",
-            "video_path": output_path
+            "video_url": video_url
         })
+
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
