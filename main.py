@@ -127,6 +127,8 @@ def make_video():
 
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
     
 def send_email(to_email, nickname, video_url):
