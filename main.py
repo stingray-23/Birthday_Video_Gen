@@ -28,6 +28,10 @@ def home():
 def make_video():
     print("Request received:", request.json)
     try:
+        print("=== Received /webhook call ===")
+        print("Raw data:", request.data)
+        print("JSON data:", request.json)
+
         data = request.json
 
         # Extract form data
